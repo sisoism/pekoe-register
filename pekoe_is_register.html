@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pekoe_is レジ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f2f4f7;
+  --white: #ffffff;
+  --border: #e8eaed;
+  --border-light: #f0f2f5;
+  --blue: #2563eb;
+  --blue-light: #eff4ff;
+  --blue-mid: #93b4f8;
+  --red: #c0392b;
+  --red-light: #fdf0ee;
+  --green: #16a34a;
+  --green-light: #f0faf4;
+  --orange: #d97706;
+  --orange-light: #fffbeb;
+  --accent: #d97706; /* fix: was referenced but undefined */
+  --text: #111827;
+  --text-mid: #6b7280;
+  --text-light: #9ca3af;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07);
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+}
+
+/* fix: was "- {" (en-dash selector bug) */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+.logo span { color: var(--blue); }
+.header-right { font-size: 12px; color: var(--text-light); }
+
+/* ── Tabs ── */
+.tabs {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 16px;
+}
+.tab {
+  padding: 13px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-mid);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 700; }
+
+/* ── Pages ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── POS Layout ── */
+#pos-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  height: calc(100vh - 92px);
+}
+.pos-left {
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg);
+}
+.pos-right {
+  overflow-y: auto;
+  background: var(--white);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Section titles ── */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── Product Grid ── */
+.product-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.product-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  user-select: none;
+}
+.product-card:hover { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+.product-card.selected { border-color: var(--blue); background: var(--blue-light); }
+.product-card.out-of-stock { opacity: 0.4; cursor: not-allowed; }
+.product-card-left { display: flex; flex-direction: column; gap: 2px; }
+.product-name { font-weight: 600; font-size: 14px; color: var(--text); }
+.product-price { font-size: 13px; color: var(--text-mid); font-weight: 400; }
+.product-stock { font-size: 11px; color: var(--text-light); margin-top: 1px; }
+.product-stock.low { color: var(--orange); font-weight: 600; }
+.product-add-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 300;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.product-card.selected .product-add-btn { background: var(--text-mid); }
+.product-card.out-of-stock .product-add-btn { background: var(--border); }
+
+/* ── Cart ── */
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.cart-item-name { flex: 1; font-weight: 500; font-size: 13px; color: var(--text); }
+.cart-item-price { font-size: 12px; color: var(--text-light); }
+.qty-control {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--white);
+}
+.qty-btn {
+  width: 26px; height: 26px;
+  background: var(--bg);
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-mid);
+  font-weight: 700;
+  transition: background 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.qty-btn:hover { background: var(--border); }
+.qty-num { width: 28px; text-align: center; font-size: 13px; font-weight: 700; color: var(--text); }
+.cart-item-total { font-weight: 700; font-size: 13px; color: var(--text); min-width: 58px; text-align: right; }
+.cart-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-light); font-size: 16px; padding: 2px;
+  transition: color 0.12s; line-height: 1;
+}
+.cart-remove:hover { color: var(--red); }
+.cart-empty {
+  text-align: center; color: var(--text-light);
+  padding: 28px; font-size: 13px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+.cart-total-bar {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px;
+}
+.cart-total-label { font-size: 13px; color: var(--text-mid); font-weight: 500; }
+.cart-total-amount { font-size: 22px; font-weight: 700; color: var(--text); }
+
+/* ── Calc Panel ── */
+.calc-panel {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.receipt-total {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+.receipt-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-mid); margin-bottom: 5px;
+}
+.receipt-row.total {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  border-top: 1px solid var(--border);
+  padding-top: 7px; margin-top: 3px; margin-bottom: 0;
+}
+.received-display {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  text-align: right;
+}
+.received-label { font-size: 10px; color: var(--text-light); letter-spacing: 0.5px; }
+.received-amount { font-size: 26px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.change-display {
+  background: var(--green-light);
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.change-display.deficit { background: var(--red-light); border-color: #fca5a5; }
+.change-label { font-size: 11px; color: var(--green); letter-spacing: 1px; font-weight: 700; }
+.change-display.deficit .change-label { color: var(--red); }
+.change-amount { font-size: 52px; font-weight: 700; color: var(--green); line-height: 1.1; margin-top: 4px; letter-spacing: -1px; }
+.change-display.deficit .change-amount { color: var(--red); }
+.change-breakdown { margin-top: 8px; font-size: 11px; color: var(--green); text-align: left; line-height: 1.8; }
+.change-display.deficit .change-breakdown { color: var(--red); }
+
+/* Money buttons */
+.money-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.money-btn {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 8px 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.money-btn:hover { background: var(--blue-light); border-color: var(--blue-mid); }
+.money-btn:active { transform: scale(0.95); }
+.money-btn.bill { border-color: #93c5fd; background: #f0f6ff; }
+.money-btn .m-label { font-size: 8px; color: var(--text-light); display: block; }
+.money-btn .m-val { font-size: 12px; font-weight: 700; color: var(--text); display: block; margin-top: 1px; }
+
+/* Calc action buttons */
+.calc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.btn-confirm {
+  grid-column: 1 / -1;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.btn-confirm:hover { background: #1d4ed8; }
+.btn-confirm:disabled { background: var(--border); color: var(--text-light); cursor: not-allowed; }
+.btn-clear {
+  background: var(--white);
+  color: var(--text-mid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.btn-clear:hover { background: var(--bg); }
+.btn-clear-all { color: var(--accent); border-color: #f0c4b4; }
+.btn-clear-all:hover { background: var(--orange-light); }
+
+/* ── Inventory / Sales pages ── */
+.inv-page, .sales-page { padding: 20px; max-width: 860px; margin: 0 auto; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.page-heading { font-size: 18px; font-weight: 700; color: var(--text); }
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-label { font-size: 11px; color: var(--text-light); margin-bottom: 6px; font-weight: 500; }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+.stat-value.accent { color: var(--red); }
+.stat-value.green { color: var(--green); }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; color: var(--text-light); padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 500; }
+td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid var(--border-light); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafbfc; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #dcfce7; color: var(--green); }
+.badge-warn { background: #fef9c3; color: var(--orange); }
+.badge-danger { background: #fee2e2; color: var(--red); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+  transition: all 0.12s; font-family: 'Noto Sans JP', sans-serif;
+}
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-outline { background: white; border: 1px solid var(--border); color: var(--text-mid); }
+.btn-outline:hover { border-color: var(--blue-mid); color: var(--text); }
+.btn-red { background: #fee2e2; color: var(--red); border: 1px solid #fca5a5; }
+.btn-red:hover { background: var(--red); color: white; }
+
+#invCards { display: flex; flex-direction: column; gap: 8px; }
+.inv-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.inv-card-info { flex: 1; }
+.inv-card-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.inv-card-price { font-size: 13px; color: var(--text-mid); }
+.inv-card-stock { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: nowrap; white-space: nowrap; }
+.inv-card-stock-num { font-size: 12px; color: var(--text-mid); }
+.inv-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+/* Modal */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 200; align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 360px;
+  max-width: 95vw;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.14);
+  animation: popIn 0.18s cubic-bezier(.4,0,.2,1);
+}
+@keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 18px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; color: var(--text-mid); margin-bottom: 5px; font-weight: 500; }
+.field input, .field select {
+  width: 100%; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius-xs);
+  padding: 9px 11px; font-size: 14px; color: var(--text); outline: none;
+  transition: border-color 0.15s; font-family: 'Noto Sans JP', sans-serif;
+}
+.field input:focus, .field select:focus { border-color: var(--blue); background: white; }
+.modal-actions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--white); border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius-sm); padding: 11px 16px;
+  font-size: 13px; color: var(--text);
+  display: none; z-index: 300;
+  box-shadow: var(--shadow); max-width: 260px;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (max-width: 700px) {
+  #pos-layout { grid-template-columns: 1fr; height: auto; }
+  .pos-right { border-top: 1px solid var(--border); border-left: none; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">pekoe<span>_is</span></div>
+  <div class="header-right" id="headerDate"></div>
+</header>
+
+<div class="tabs" id="tabBar">
+  <div class="tab active" data-tab="pos">🧾 レジ</div>
+  <div class="tab" data-tab="inventory">📦 在庫管理</div>
+  <div class="tab" data-tab="sales">📊 売り上げ</div>
+</div>
+
+<!-- POS -->
+<div class="page active" id="page-pos">
+  <div id="pos-layout">
+    <div class="pos-left">
+      <div class="section-title">商品を選ぶ</div>
+      <div class="product-grid" id="productGrid"></div>
+      <div class="cart-section">
+        <div class="section-title">カート</div>
+        <div id="cartItems"><div class="cart-empty">商品を選んでください</div></div>
+        <div class="cart-total-bar" id="cartTotalBar" style="display:none">
+          <div class="cart-total-label">合計金額</div>
+          <div class="cart-total-amount" id="cartTotal">¥0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pos-right">
+      <div class="calc-panel">
+        <div class="section-title">お支払い</div>
+
+        <div class="receipt-total" id="receiptSummary" style="display:none">
+          <div id="receiptLines"></div>
+          <div class="receipt-row total">
+            <span>合計</span><span id="receiptTotal">¥0</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;color:var(--text-mid);margin-bottom:6px;font-weight:500;">お預かり金額</div>
+          <div class="received-display">
+            <div class="received-label">お預かり</div>
+            <div class="received-amount" id="receivedAmt">¥0</div>
+          </div>
+        </div>
+
+        <div class="change-display" id="changeDisplay">
+          <div class="change-label" id="changeLabel">お　釣　り</div>
+          <div class="change-amount" id="changeAmt">—</div>
+          <div class="change-breakdown" id="changeBD"></div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;color:var(--text-mid);margin-bottom:8px;font-weight:500;">お預かりを入力</div>
+          <div class="money-grid" id="moneyGrid">
+            <div class="money-btn bill" data-amt="10000"><span class="m-label">お札</span><span class="m-val">10,000</span></div>
+            <div class="money-btn bill" data-amt="5000"><span class="m-label">お札</span><span class="m-val">5,000</span></div>
+            <div class="money-btn bill" data-amt="2000"><span class="m-label">お札</span><span class="m-val">2,000</span></div>
+            <div class="money-btn bill" data-amt="1000"><span class="m-label">お札</span><span class="m-val">1,000</span></div>
+            <div class="money-btn" data-amt="500"><span class="m-label">硬貨</span><span class="m-val">500</span></div>
+            <div class="money-btn" data-amt="100"><span class="m-label">硬貨</span><span class="m-val">100</span></div>
+            <div class="money-btn" data-amt="50"><span class="m-label">硬貨</span><span class="m-val">50</span></div>
+            <div class="money-btn" data-amt="10"><span class="m-label">硬貨</span><span class="m-val">10</span></div>
+            <div class="money-btn" data-amt="5"><span class="m-label">硬貨</span><span class="m-val">5</span></div>
+            <div class="money-btn" data-amt="1"><span class="m-label">硬貨</span><span class="m-val">1</span></div>
+            <div class="money-btn bill" data-amt="exact" title="ちょうど"><span class="m-label">ぴったり</span><span class="m-val" style="font-size:11px">ちょうど</span></div>
+          </div>
+        </div>
+
+        <div class="calc-actions">
+          <button class="btn-clear" id="btnClearReceived">お預かりクリア</button>
+          <button class="btn-clear btn-clear-all" id="btnClearAll">全クリア</button>
+          <button class="btn-confirm" id="confirmBtn" disabled>✓ 会計を確定する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTORY -->
+<div class="page" id="page-inventory">
+  <div class="inv-page">
+    <div class="page-header">
+      <div class="page-heading">在庫管理</div>
+      <button class="btn btn-primary" id="btnAddProduct">＋ 商品を追加</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">登録商品数</div><div class="stat-value" id="invTotal">0</div></div>
+      <div class="stat-card"><div class="stat-label">在庫少ない</div><div class="stat-value accent" id="invLow">0</div></div>
+      <div class="stat-card"><div class="stat-label">在庫総価値</div><div class="stat-value green" id="invValue">¥0</div></div>
+    </div>
+    <div id="invCards"></div>
+  </div>
+</div>
+
+<!-- SALES -->
+<div class="page" id="page-sales">
+  <div class="sales-page">
+    <div class="page-header">
+      <div class="page-heading">売り上げ</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">本日の売上</div><div class="stat-value green" id="todaySales">¥0</div><div style="font-size:11px;color:var(--text-light);margin-top:2px" id="todayCount">0件</div></div>
+      <div class="stat-card"><div class="stat-label">今月の売上</div><div class="stat-value green" id="monthSales">¥0</div><div style="font-size:11px;color:var(--text-light);margin-top:2px" id="monthCount">0件</div></div>
+      <div class="stat-card"><div class="stat-label">累計売上</div><div class="stat-value green" id="allSalesVal">¥0</div><div style="font-size:11px;color:var(--text-light);margin-top:2px" id="allCount">0件</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text-mid);font-weight:600;margin-bottom:12px;">商品別累計</div>
+      <table>
+        <thead><tr><th>商品名</th><th>販売数</th><th>累計売上</th></tr></thead>
+        <tbody id="productSummaryTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--text-mid);font-weight:600;margin-bottom:12px;">全履歴</div>
+      <div style="overflow-x:auto;">
+        <table style="min-width:520px">
+          <thead><tr><th>日時</th><th>商品</th><th>数量</th><th>単価</th><th>合計</th><th></th></tr></thead>
+          <tbody id="allSalesTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="modalProduct">
+  <div class="modal">
+    <div class="modal-title" id="modalProductTitle">商品を追加</div>
+    <input type="hidden" id="editProductId">
+    <div class="field"><label>商品名</label><input type="text" id="pName" placeholder="例: ラテ"></div>
+    <div class="field"><label>価格 (円)</label><input type="number" id="pPrice" placeholder="500" min="1"></div>
+    <div class="field"><label>在庫数</label><input type="number" id="pStock" placeholder="20" min="0"></div>
+    <div class="field"><label>在庫警告ライン</label><input type="number" id="pThreshold" placeholder="5" min="1"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btnCancelProduct">キャンセル</button>
+      <button class="btn btn-primary" id="btnSaveProduct">保存</button>
+    </div>
+    <div id="deleteProductWrap" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:14px;">
+      <button class="btn btn-red" style="width:100%;justify-content:center" id="btnDeleteProduct">この商品を削除する</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalStock">
+  <div class="modal">
+    <div class="modal-title" id="modalStockTitle">在庫を調整</div>
+    <input type="hidden" id="adjustStockId">
+    <div class="field"><label>変更量（＋で追加、－で減少）</label><input type="number" id="stockDelta" placeholder="例: 10 または -3"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btnCancelStock">キャンセル</button>
+      <button class="btn btn-primary" id="btnDoAdjust">更新</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────
+const MAX_PRODUCTS = 20; // raised from hardcoded 8
+const DENOMS = [10000, 5000, 2000, 1000, 500, 100, 50, 10, 5, 1];
+const STORAGE_KEY = 'ccfukuoka_v2';
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify({
+  products: [
+    { id: 1, name: 'コーヒー',   price: 400, stock: 30, threshold: 5 },
+    { id: 2, name: 'カフェラテ', price: 480, stock: 25, threshold: 5 },
+    { id: 3, name: 'クッキー',   price: 200, stock: 20, threshold: 3 },
+    { id: 4, name: 'マフィン',   price: 300, stock: 15, threshold: 3 },
+  ],
+  sales: [],
+  nextId: 5 // fix: deterministic ID counter instead of Date.now()+random
+}));
+
+// Migrate legacy data missing nextId
+if (!db.nextId) {
+  db.nextId = Math.max(0, ...db.products.map(p => p.id)) + 1;
+}
+
+let cart = {};    // { productId: qty }
+let received = 0;
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function fmt(n) {
+  return '¥' + n.toLocaleString('ja-JP');
+}
+
+function cartTotal() {
+  return Object.entries(cart).reduce((sum, [id, qty]) => {
+    const p = getProduct(+id);
+    return sum + (p ? p.price * qty : 0);
+  }, 0);
+}
+
+function getProduct(id) {
+  return db.products.find(p => p.id === id) ?? null;
+}
+
+let _toastTimer = null;
+function showToast(msg, warn = false) {
+  const t = document.getElementById('toast');
+  t.textContent = (warn ? '⚠️ ' : '✅ ') + msg;
+  t.style.borderLeftColor = warn ? 'var(--accent)' : 'var(--green)';
+  t.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ─────────────────────────────────────────
+// TABS — fix: no implicit `event` global reference
+// ─────────────────────────────────────────
+document.getElementById('tabBar').addEventListener('click', e => {
+  const tab = e.target.closest('.tab[data-tab]');
+  if (!tab) return;
+  const name = tab.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  if (name === 'inventory') renderInventory();
+  if (name === 'sales')     renderSales();
+});
+
+// Header date
+document.getElementById('headerDate').textContent =
+  new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+// ─────────────────────────────────────────
+// PRODUCT GRID
+// ─────────────────────────────────────────
+function renderProductGrid() {
+  const grid = document.getElementById('productGrid');
+  if (!db.products.length) {
+    grid.innerHTML = '<div style="color:var(--text-light);text-align:center;padding:24px">商品が登録されていません</div>';
+    return;
+  }
+  grid.innerHTML = db.products.map(p => {
+    const qty = cart[p.id] || 0;
+    const oos = p.stock <= 0;
+    const low = !oos && p.stock <= p.threshold;
+    const classes = ['product-card', qty > 0 && 'selected', oos && 'out-of-stock'].filter(Boolean).join(' ');
+    return `<div class="${classes}" data-product-id="${p.id}">
+      <div class="product-card-left">
+        <div class="product-name">${p.name}</div>
+        <div class="product-price">¥${p.price.toLocaleString('ja-JP')}</div>
+        <div class="product-stock${low ? ' low' : ''}">${oos ? '在庫切れ' : low ? `残り${p.stock}` : `在庫: ${p.stock}`}</div>
+      </div>
+      <div class="product-add-btn">${qty > 0 ? qty : '+'}</div>
+    </div>`;
+  }).join('');
+}
+
+// Event delegation — single listener, not inline onclick
+document.getElementById('productGrid').addEventListener('click', e => {
+  const card = e.target.closest('[data-product-id]');
+  if (!card) return;
+  addToCart(+card.dataset.productId);
+});
+
+function addToCart(id) {
+  const p = getProduct(id);
+  if (!p || p.stock <= 0) return;
+  const current = cart[id] || 0;
+  if (current >= p.stock) { showToast('在庫数を超えています', true); return; }
+  cart[id] = current + 1;
+  renderProductGrid();
+  renderCart();
+}
+
+// ─────────────────────────────────────────
+// CART
+// ─────────────────────────────────────────
+function renderCart() {
+  const entries = Object.entries(cart).filter(([, q]) => q > 0);
+  const container = document.getElementById('cartItems');
+  const totalBar  = document.getElementById('cartTotalBar');
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="cart-empty">商品を選んでください</div>';
+    totalBar.style.display = 'none';
+    updateCalc();
+    return;
+  }
+
+  container.innerHTML = entries.map(([id, qty]) => {
+    const p = getProduct(+id);
+    if (!p) return '';
+    return `<div class="cart-item" data-cart-id="${id}">
+      <div style="flex:1">
+        <div class="cart-item-name">${p.name}</div>
+        <div class="cart-item-price">${fmt(p.price)} × ${qty}</div>
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn" data-cart-delta="-1" data-cart-id="${id}">−</button>
+        <div class="qty-num">${qty}</div>
+        <button class="qty-btn" data-cart-delta="1" data-cart-id="${id}">＋</button>
+      </div>
+      <div class="cart-item-total">${fmt(p.price * qty)}</div>
+      <button class="cart-remove" data-cart-remove="${id}">×</button>
+    </div>`;
+  }).join('');
+
+  const total = cartTotal();
+  totalBar.style.display = 'flex';
+  document.getElementById('cartTotal').textContent = fmt(total);
+  updateCalc();
+  updateReceiptSummary();
+}
+
+// Single delegated listener for cart
+document.getElementById('cartItems').addEventListener('click', e => {
+  const removeBtn = e.target.closest('[data-cart-remove]');
+  if (removeBtn) { removeFromCart(+removeBtn.dataset.cartRemove); return; }
+  const deltaBtn = e.target.closest('[data-cart-delta]');
+  if (deltaBtn) { changeQty(+deltaBtn.dataset.cartId, +deltaBtn.dataset.cartDelta); }
+});
+
+function changeQty(id, delta) {
+  const p = getProduct(id);
+  if (!p) return;
+  const newQty = (cart[id] || 0) + delta;
+  if (newQty <= 0) { removeFromCart(id); return; }
+  if (newQty > p.stock) { showToast('在庫数を超えています', true); return; }
+  cart[id] = newQty;
+  renderProductGrid();
+  renderCart();
+}
+
+function removeFromCart(id) {
+  delete cart[id];
+  renderProductGrid();
+  renderCart();
+}
+
+function updateReceiptSummary() {
+  const entries = Object.entries(cart).filter(([, q]) => q > 0);
+  const rs = document.getElementById('receiptSummary');
+  if (!entries.length) { rs.style.display = 'none'; return; }
+  rs.style.display = 'block';
+  document.getElementById('receiptLines').innerHTML = entries.map(([id, qty]) => {
+    const p = getProduct(+id);
+    return p ? `<div class="receipt-row"><span>${p.name} ×${qty}</span><span>${fmt(p.price * qty)}</span></div>` : '';
+  }).join('');
+  document.getElementById('receiptTotal').textContent = fmt(cartTotal());
+}
+
+// ─────────────────────────────────────────
+// CALCULATOR
+// ─────────────────────────────────────────
+// Event delegation for money buttons
+document.getElementById('moneyGrid').addEventListener('click', e => {
+  const btn = e.target.closest('[data-amt]');
+  if (!btn) return;
+  const val = btn.dataset.amt;
+  if (val === 'exact') { received = cartTotal(); }
+  else { received += +val; }
+  updateCalc();
+});
+
+document.getElementById('btnClearReceived').addEventListener('click', () => { received = 0; updateCalc(); });
+document.getElementById('btnClearAll').addEventListener('click', clearAll);
+document.getElementById('confirmBtn').addEventListener('click', confirmSale);
+
+function clearAll() {
+  cart = {};
+  received = 0;
+  renderProductGrid();
+  renderCart();
+  updateCalc();
+}
+
+function updateCalc() {
+  const total  = cartTotal();
+  const change = received - total;
+  const ra = document.getElementById('receivedAmt');
+  const ca = document.getElementById('changeAmt');
+  const cl = document.getElementById('changeLabel');
+  const cd = document.getElementById('changeDisplay');
+  const bd = document.getElementById('changeBD');
+  const confirmBtn = document.getElementById('confirmBtn');
+
+  ra.textContent = fmt(received);
+
+  if (!total || received === 0) {
+    ca.textContent = '—';
+    cl.textContent = 'お　釣　り';
+    cd.className = 'change-display';
+    bd.textContent = '';
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  if (change < 0) {
+    ca.textContent = fmt(Math.abs(change)) + ' 不足';
+    cl.textContent = '金 額 不 足';
+    cd.className = 'change-display deficit';
+    bd.textContent = '';
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  ca.textContent = fmt(change);
+  cl.textContent = 'お　釣　り';
+  cd.className = 'change-display';
+  confirmBtn.disabled = false;
+
+  if (change === 0) { bd.textContent = ''; return; }
+
+  let rem = change, lines = [];
+  for (const d of DENOMS) {
+    const cnt = Math.floor(rem / d);
+    if (cnt > 0) { lines.push(`${d >= 1000 ? d.toLocaleString('ja-JP') : d}円 × ${cnt}枚`); rem -= d * cnt; }
+  }
+  bd.textContent = lines.join('　');
+}
+
+// ─────────────────────────────────────────
+// CONFIRM SALE
+// ─────────────────────────────────────────
+function confirmSale() {
+  const total = cartTotal();
+  if (!total || received < total) return;
+
+  const entries = Object.entries(cart).filter(([, q]) => q > 0);
+  const now = new Date().toISOString();
+
+  entries.forEach(([id, qty]) => {
+    const p = getProduct(+id);
+    if (!p) return;
+    p.stock = Math.max(0, p.stock - qty);
+    // fix: use deterministic ID counter
+    db.sales.unshift({
+      id: db.nextId++,
+      productName: p.name,
+      qty,
+      price: p.price,
+      total: p.price * qty,
+      date: now
+    });
+  });
+
+  persist();
+  showToast(`会計完了！ お釣り ${fmt(received - total)}`);
+  clearAll();
+}
+
+// ─────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────
+function renderInventory() {
+  const prods = db.products;
+  let lowCount = 0, totalVal = 0;
+  const container = document.getElementById('invCards');
+
+  if (!prods.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:40px">商品がありません</div>';
+  } else {
+    container.innerHTML = prods.map(p => {
+      const oos = p.stock <= 0;
+      const low = !oos && p.stock <= p.threshold;
+      if (oos || low) lowCount++;
+      totalVal += p.price * p.stock;
+      const badge = oos
+        ? '<span class="badge badge-danger">在庫切れ</span>'
+        : low ? '<span class="badge badge-warn">残りわずか</span>'
+               : '<span class="badge badge-green">在庫あり</span>';
+      return `<div class="inv-card">
+        <div class="inv-card-info">
+          <div class="inv-card-name">${p.name}</div>
+          <div class="inv-card-price">¥${p.price.toLocaleString('ja-JP')}</div>
+          <div class="inv-card-stock"><span class="inv-card-stock-num">在庫数 ${p.stock}</span>${badge}</div>
+        </div>
+        <div class="inv-card-actions">
+          <button class="btn btn-sm btn-outline" data-action="edit"   data-id="${p.id}">編集</button>
+          <button class="btn btn-sm btn-outline" data-action="adjust" data-id="${p.id}">在庫調整</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('invTotal').textContent = prods.length;
+  document.getElementById('invLow').textContent   = lowCount;
+  document.getElementById('invValue').textContent  = fmt(totalVal);
+  renderProductGrid();
+}
+
+// fix: single persistent delegated listener (not re-registered on each render)
+document.getElementById('invCards').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = +btn.dataset.id;
+  if (btn.dataset.action === 'edit')   openEditProduct(id);
+  if (btn.dataset.action === 'adjust') openAdjustStock(id);
+});
+
+document.getElementById('btnAddProduct').addEventListener('click', openAddProduct);
+
+function openAddProduct() {
+  document.getElementById('modalProductTitle').textContent = '商品を追加';
+  document.getElementById('editProductId').value = '';
+  document.getElementById('deleteProductWrap').style.display = 'none';
+  ['pName','pPrice','pStock','pThreshold'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modalProduct').classList.add('open');
+}
+
+function openEditProduct(id) {
+  const p = getProduct(id);
+  if (!p) return;
+  document.getElementById('modalProductTitle').textContent = '商品を編集';
+  document.getElementById('editProductId').value = id;
+  document.getElementById('pName').value      = p.name;
+  document.getElementById('pPrice').value     = p.price;
+  document.getElementById('pStock').value     = p.stock;
+  document.getElementById('pThreshold').value = p.threshold ?? 5;
+  document.getElementById('deleteProductWrap').style.display = 'block';
+  document.getElementById('modalProduct').classList.add('open');
+}
+
+document.getElementById('btnSaveProduct').addEventListener('click', () => {
+  const name      = document.getElementById('pName').value.trim();
+  const price     = parseInt(document.getElementById('pPrice').value)     || 0;
+  const stock     = parseInt(document.getElementById('pStock').value)     || 0;
+  const threshold = parseInt(document.getElementById('pThreshold').value) || 5;
+
+  if (!name || !price) { showToast('商品名と価格は必須です', true); return; }
+
+  const editId = document.getElementById('editProductId').value;
+  if (editId) {
+    const p = getProduct(+editId);
+    if (p) Object.assign(p, { name, price, stock, threshold });
+  } else {
+    if (db.products.length >= MAX_PRODUCTS) { showToast(`商品は最大${MAX_PRODUCTS}件です`, true); return; }
+    db.products.push({ id: db.nextId++, name, price, stock, threshold });
+  }
+  persist();
+  closeModal('modalProduct');
+  renderInventory();
+  showToast(editId ? `${name} を更新しました` : `${name} を追加しました`);
+});
+
+document.getElementById('btnCancelProduct').addEventListener('click', () => closeModal('modalProduct'));
+
+document.getElementById('btnDeleteProduct').addEventListener('click', () => {
+  const id = +document.getElementById('editProductId').value;
+  if (!id) return;
+  db.products = db.products.filter(p => p.id !== id);
+  delete cart[id];
+  persist();
+  closeModal('modalProduct');
+  renderInventory();
+  showToast('削除しました');
+});
+
+function openAdjustStock(id) {
+  const p = getProduct(id);
+  if (!p) return;
+  document.getElementById('modalStockTitle').textContent = `${p.name} の在庫調整`;
+  document.getElementById('adjustStockId').value = id;
+  document.getElementById('stockDelta').value = '';
+  document.getElementById('modalStock').classList.add('open');
+}
+
+document.getElementById('btnDoAdjust').addEventListener('click', () => {
+  const id    = +document.getElementById('adjustStockId').value;
+  const delta = parseInt(document.getElementById('stockDelta').value) || 0;
+  const p = getProduct(id);
+  if (!p) return;
+  p.stock = Math.max(0, p.stock + delta);
+  persist();
+  closeModal('modalStock');
+  renderInventory();
+  showToast(`${p.name} の在庫: ${p.stock}個`);
+});
+
+document.getElementById('btnCancelStock').addEventListener('click', () => closeModal('modalStock'));
+
+// ─────────────────────────────────────────
+// SALES
+// ─────────────────────────────────────────
+function renderSales() {
+  const today     = new Date().toDateString();
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const s         = db.sales;
+  const todayS    = s.filter(x => new Date(x.date).toDateString() === today);
+  const monthS    = s.filter(x => x.date.startsWith(thisMonth));
+  const sum       = arr => arr.reduce((a, x) => a + x.total, 0);
+
+  document.getElementById('todaySales').textContent  = fmt(sum(todayS));
+  document.getElementById('todayCount').textContent  = todayS.length + '件';
+  document.getElementById('monthSales').textContent  = fmt(sum(monthS));
+  document.getElementById('monthCount').textContent  = monthS.length + '件';
+  document.getElementById('allSalesVal').textContent = fmt(sum(s));
+  document.getElementById('allCount').textContent    = s.length + '件';
+
+  // 商品別累計
+  const summaryMap = {};
+  s.forEach(x => {
+    if (!summaryMap[x.productName]) summaryMap[x.productName] = { qty: 0, total: 0 };
+    summaryMap[x.productName].qty   += x.qty;
+    summaryMap[x.productName].total += x.total;
+  });
+  const summaryEntries = Object.entries(summaryMap).sort((a, b) => b[1].total - a[1].total);
+  document.getElementById('productSummaryTable').innerHTML = summaryEntries.length
+    ? summaryEntries.map(([name, v]) => `<tr>
+        <td style="font-weight:500">${name}</td>
+        <td style="color:var(--text-mid)">${v.qty}個</td>
+        <td style="color:var(--green);font-weight:700">${fmt(v.total)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text-light);padding:20px">データなし</td></tr>';
+
+  // 全履歴
+  document.getElementById('allSalesTable').innerHTML = s.length
+    ? s.map(x => `<tr>
+        <td style="font-size:11px;white-space:nowrap">${new Date(x.date).toLocaleString('ja-JP')}</td>
+        <td style="white-space:nowrap">${x.productName}</td>
+        <td style="white-space:nowrap">${x.qty}</td>
+        <td style="white-space:nowrap">${fmt(x.price)}</td>
+        <td style="color:var(--green);font-weight:700;white-space:nowrap">${fmt(x.total)}</td>
+        <td><button class="btn btn-sm btn-red" data-sale-id="${x.id}">削除</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:24px">データなし</td></tr>';
+}
+
+// fix: single persistent delegated listener
+document.getElementById('allSalesTable').addEventListener('click', e => {
+  const btn = e.target.closest('[data-sale-id]');
+  if (!btn) return;
+  db.sales = db.sales.filter(s => s.id !== +btn.dataset.saleId);
+  persist();
+  renderSales();
+  showToast('削除しました');
+});
+
+// ─────────────────────────────────────────
+// MODALS — close on overlay click
+// ─────────────────────────────────────────
+document.querySelectorAll('.overlay').forEach(o =>
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); })
+);
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+renderProductGrid();
+renderCart();
+updateCalc();
+</script>
+</body>
+</html>
